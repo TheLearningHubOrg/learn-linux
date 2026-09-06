@@ -1,0 +1,21 @@
+{
+  "name": "learn-linux",
+  "version": "1.0.0",
+  "description": "An exhaustive, production-grade Linux systems administration & SRE masterclass.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/linux.test.mjs"
+  },
+  "keywords": [
+    "linux",
+    "posix",
+    "kernel",
+    "bash",
+    "systemd",
+    "sre",
+    "devops"
+  ],
+  "author": "Manthan Ank",
+  "license": "MIT"
+}
