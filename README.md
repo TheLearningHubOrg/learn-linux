@@ -1024,3 +1024,159 @@ Contributions are welcome! Please review our [CONTRIBUTING.md](CONTRIBUTING.md) 
 
 ## 📄 License
 This project is open-source software licensed under the [MIT License](LICENSE).
+
+
+
+### Complete Linux Systems Engineering & Production Code Examples
+
+#### 1. Systemd Service Unit: Hardened Production Daemon Configuration
+Defines a robust background daemon with automatic restart, sandboxing, resource limits, and journald logging:
+
+```ini
+# /etc/systemd/system/node-backend.service
+[Unit]
+Description=Node.js API Microservice Daemon
+Documentation=https://api.internal.example.com/docs
+After=network-online.target remote-fs.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=appuser
+Group=appgroup
+WorkingDirectory=/var/www/backend
+
+# Execution entrypoint
+ExecStart=/usr/bin/node /var/www/backend/dist/server.js
+ExecReload=/bin/kill -s HUP $MAINPID
+
+# Restart policy on failure
+Restart=always
+RestartSec=5s
+KillMode=mixed
+TimeoutStopSec=20s
+
+# Sandboxing & Security Hardening
+ProtectSystem=strict
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ReadWritePaths=/var/log/backend /tmp
+
+# Kernel limits (Ulimit)
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Environment configuration
+Environment=NODE_ENV=production PORT=8080
+EnvironmentFile=-/etc/default/node-backend
+
+# Standard output redirected to journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=node-backend
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Managing the Service:**
+```bash
+# Reload systemd manager configuration
+sudo systemctl daemon-reload
+
+# Enable service to start on boot and launch immediately
+sudo systemctl enable --now node-backend.service
+
+# Inspect live logs with following stream
+sudo journalctl -u node-backend -f -o cat
+```
+
+---
+
+#### 2. The Text Processing Trifecta: `awk`, `sed`, and `grep` Power Recipes
+Analyze gigabytes of access logs without leaving the shell:
+
+```bash
+# AWK: Calculate total bytes transferred per IP address and sort descending
+awk '{ip[$1] += $10} END {for (i in ip) print i, ip[i]/1024/1024 " MB"}' access.log | sort -k2 -nr | head -n 10
+
+# AWK: Calculate HTTP 5xx error rate percentage from Nginx logs
+awk '{total++; if ($9 ~ /^5/) errors++} END {printf "5xx Rate: %.2f%% (%d/%d)\n", (errors/total)*100, errors, total}' access.log
+
+# SED: In-place replace database host string across all environment configs
+sed -i.bak 's/db-old\.internal/db-aurora\.cluster\.internal/g' /etc/app/*.conf
+
+# SED: Strip all comment lines (#) and blank lines from configuration file
+sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' /etc/nginx/nginx.conf
+
+# GREP / RIPGREP: Find all UUID format matches across codebase with line numbers
+grep -Eno "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}" src/
+```
+
+---
+
+#### 3. Production Bash Script Template: Robustness, Logging & Traps
+A resilient shell script implementing strict error handling, temporary directory cleanup, and argument parsing:
+
+```bash
+#!/usr/bin/env bash
+# Strict error handling: exit on error, undefined var, and pipe failure
+set -euo pipefail
+IFS=$'\n\t'
+
+readonly SCRIPT_NAME=$(basename "$0")
+readonly LOG_FILE="/tmp/${SCRIPT_NAME}.log"
+
+# Setup temporary scratch workspace
+SCRATCH_DIR=$(mktemp -d -t backup-XXXXXXXXXX)
+
+# Trap cleanup function on script exit or interrupt (SIGINT, SIGTERM)
+cleanup() {
+  echo "[INFO] Cleaning temporary directory: $SCRATCH_DIR"
+  rm -rf "$SCRATCH_DIR"
+}
+trap cleanup EXIT
+
+log() {
+  local level="$1"
+  shift
+  echo "$(date '+%Y-%m-%d %H:%M:%S') [$level] $*" | tee -a "$LOG_FILE"
+}
+
+# Parse command line options
+TARGET_ENV="staging"
+DRY_RUN=0
+
+while getopts ":e:d" opt; do
+  case ${opt} in
+    e ) TARGET_ENV="$OPTARG" ;;
+    d ) DRY_RUN=1 ;;
+    \? ) echo "Invalid option: -$OPTARG" >&2; exit 1 ;;
+  esac
+done
+
+log "INFO" "Deploying to environment: $TARGET_ENV (Dry Run: $DRY_RUN)"
+```
+
+---
+
+#### 4. Diagnostic Profiling: Isolating High Load & Disk I/O Bottlenecks
+Quick commands to identify why a server is unresponsive:
+
+```bash
+# 1. Inspect virtual memory, disk block operations, and CPU wait states every 1 second
+vmstat 1 5
+
+# 2. Check per-disk read/write throughput and I/O utilization (%util)
+iostat -xz 1 5
+
+# 3. Trace which files or sockets a stalled process (PID 4812) is waiting on
+strace -p 4812 -f -e trace=open,openat,read,write,connect -s 128
+
+# 4. Find open files, sockets, and ports held by a specific process
+lsof -p 4812 -n -P
+```
